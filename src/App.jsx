@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Volume2, ArrowLeft, ArrowRight, Sparkles, Lock } from "lucide-react";
+import { Volume2, ArrowLeft, ArrowRight, Sparkles, Lock, Check, Cat } from "lucide-react";
 
 const STORAGE_KEY = "kitty-greek-progress-v1";
 
@@ -17,8 +17,22 @@ const LOCKED = [
   { title: "Lektion 3", count: 12 },
 ];
 
-function CatFace({ height = 160, celebrate = false }) {
+// Auswählbare Katzen. fur = Fell, accent = Ohren/Nase/Wangen, bow = Schleife.
+const CATS = [
+  { id: "mia", name: "Mia", fur: "#FBF6EC", accent: "#E8974E", bow: "#2B6CA3" },
+  { id: "luna", name: "Luna", fur: "#C8D0D8", accent: "#EFA1BF", bow: "#7E6BB5" },
+  { id: "sunny", name: "Sunny", fur: "#F3B65E", accent: "#CE7B2C", bow: "#4C9A6A" },
+  { id: "rosa", name: "Rosa", fur: "#FDE7EE", accent: "#EF9BB6", bow: "#E8709A" },
+  { id: "coco", name: "Coco", fur: "#CDA985", accent: "#8A5A34", bow: "#3E7CB1" },
+  { id: "minze", name: "Minze", fur: "#C7E5D4", accent: "#5FB98C", bow: "#E58E5A" },
+];
+
+const DEFAULT_CAT = CATS[0];
+const getCat = (id) => CATS.find((c) => c.id === id) || DEFAULT_CAT;
+
+function CatFace({ height = 160, celebrate = false, cat = DEFAULT_CAT }) {
   const width = Math.round(height * 0.86);
+  const { fur, accent, bow } = cat;
   return (
     <div className={celebrate ? "cat-celebrate" : "cat-idle"} style={{ position: "relative", width, height }}>
       {celebrate && (
@@ -32,40 +46,40 @@ function CatFace({ height = 160, celebrate = false }) {
         {/* tail */}
         <path
           d="M148,178 C186,176 194,128 166,104 C155,95 141,104 145,116 C150,130 165,136 160,156 C157,170 143,178 126,176"
-          fill="#FBF6EC" stroke="#2C3E4A" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"
+          fill={fur} stroke="#2C3E4A" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"
         />
-        <path d="M160,110 C168,116 171,126 168,134" fill="none" stroke="#E8974E" strokeWidth="4" strokeLinecap="round" />
+        <path d="M160,110 C168,116 171,126 168,134" fill="none" stroke={accent} strokeWidth="4" strokeLinecap="round" />
 
         {/* body */}
         <path
           d="M52,196 C46,142 60,110 86,110 C112,110 126,142 120,196 C120,204 96,208 86,208 C76,208 52,204 52,196 Z"
-          fill="#FBF6EC" stroke="#2C3E4A" strokeWidth="4" strokeLinejoin="round"
+          fill={fur} stroke="#2C3E4A" strokeWidth="4" strokeLinejoin="round"
         />
-        <ellipse cx="86" cy="168" rx="24" ry="32" fill="#FFFFFF" opacity="0.55" />
+        <ellipse cx="86" cy="168" rx="24" ry="32" fill="#FFFFFF" opacity="0.45" />
 
         {/* front paws */}
-        <ellipse cx="68" cy="200" rx="14" ry="9" fill="#FBF6EC" stroke="#2C3E4A" strokeWidth="3.5" />
-        <ellipse cx="104" cy="200" rx="14" ry="9" fill="#FBF6EC" stroke="#2C3E4A" strokeWidth="3.5" />
+        <ellipse cx="68" cy="200" rx="14" ry="9" fill={fur} stroke="#2C3E4A" strokeWidth="3.5" />
+        <ellipse cx="104" cy="200" rx="14" ry="9" fill={fur} stroke="#2C3E4A" strokeWidth="3.5" />
         <path d="M62,198 L62,203 M68,199 L68,204 M74,198 L74,203" stroke="#2C3E4A" strokeWidth="2" strokeLinecap="round" />
         <path d="M98,198 L98,203 M104,199 L104,204 M110,198 L110,203" stroke="#2C3E4A" strokeWidth="2" strokeLinecap="round" />
 
         {/* bow */}
-        <path d="M72,132 L86,142 L100,132 L100,140 L86,150 L72,140 Z" fill="#2B6CA3" stroke="#2C3E4A" strokeWidth="2.5" strokeLinejoin="round" />
-        <circle cx="86" cy="140" r="4" fill="#FBF6EC" stroke="#2C3E4A" strokeWidth="2" />
+        <path d="M72,132 L86,142 L100,132 L100,140 L86,150 L72,140 Z" fill={bow} stroke="#2C3E4A" strokeWidth="2.5" strokeLinejoin="round" />
+        <circle cx="86" cy="140" r="4" fill={fur} stroke="#2C3E4A" strokeWidth="2" />
 
         {/* ears */}
-        <path d="M50,72 L36,26 L76,62 Z" fill="#FBF6EC" stroke="#2C3E4A" strokeWidth="4" strokeLinejoin="round" />
-        <path d="M122,72 L136,26 L96,62 Z" fill="#FBF6EC" stroke="#2C3E4A" strokeWidth="4" strokeLinejoin="round" />
-        <path d="M53,63 L43,36 L69,58 Z" fill="#E8974E" />
-        <path d="M119,63 L129,36 L103,58 Z" fill="#E8974E" />
+        <path d="M50,72 L36,26 L76,62 Z" fill={fur} stroke="#2C3E4A" strokeWidth="4" strokeLinejoin="round" />
+        <path d="M122,72 L136,26 L96,62 Z" fill={fur} stroke="#2C3E4A" strokeWidth="4" strokeLinejoin="round" />
+        <path d="M53,63 L43,36 L69,58 Z" fill={accent} />
+        <path d="M119,63 L129,36 L103,58 Z" fill={accent} />
 
         {/* head */}
-        <circle cx="86" cy="98" r="52" fill="#FBF6EC" stroke="#2C3E4A" strokeWidth="4" />
-        <path d="M126,80 Q150,84 148,66" fill="#E8974E" stroke="#2C3E4A" strokeWidth="2.5" />
+        <circle cx="86" cy="98" r="52" fill={fur} stroke="#2C3E4A" strokeWidth="4" />
+        <path d="M126,80 Q150,84 148,66" fill={accent} stroke="#2C3E4A" strokeWidth="2.5" />
 
         {/* blush */}
-        <circle cx="52" cy="112" r="9" fill="#E8974E" opacity="0.35" />
-        <circle cx="120" cy="112" r="9" fill="#E8974E" opacity="0.35" />
+        <circle cx="52" cy="112" r="9" fill={accent} opacity="0.35" />
+        <circle cx="120" cy="112" r="9" fill={accent} opacity="0.35" />
 
         {/* eyes */}
         {celebrate ? (
@@ -83,7 +97,7 @@ function CatFace({ height = 160, celebrate = false }) {
         )}
 
         {/* nose + mouth */}
-        <path d="M81,113 L91,113 L86,119 Z" fill="#E8974E" />
+        <path d="M81,113 L91,113 L86,119 Z" fill={accent} />
         <path d="M86,119 L86,124" stroke="#2C3E4A" strokeWidth="2" strokeLinecap="round" />
         {celebrate ? (
           <path d="M86,124 Q76,138 62,132 M86,124 Q96,138 110,132" fill="none" stroke="#2C3E4A" strokeWidth="3" strokeLinecap="round" />
@@ -128,8 +142,11 @@ export default function GreekLearningApp() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [screen, setScreen] = useState("home");
   const [celebrating, setCelebrating] = useState(false);
+  const [catId, setCatId] = useState(DEFAULT_CAT.id);
+
   const [voices, setVoices] = useState([]);
-  const [speechOk, setSpeechOk] = useState(true);
+  const [speechSupported, setSpeechSupported] = useState(true);
+  const [greekVoiceAvailable, setGreekVoiceAvailable] = useState(true);
 
   const [quizPool, setQuizPool] = useState([]);
   const [quizAnswer, setQuizAnswer] = useState(null);
@@ -137,32 +154,76 @@ export default function GreekLearningApp() {
   const [quizFeedback, setQuizFeedback] = useState(null);
   const [quizScore, setQuizScore] = useState(0);
 
+  const selectedCat = getCat(catId);
+
+  // Stimmen laden. getVoices() ist in vielen Browsern erst nach dem
+  // "voiceschanged"-Event gefüllt, deshalb hören wir darauf UND fragen
+  // ein paarmal aktiv nach.
   useEffect(() => {
     if (typeof window === "undefined" || !window.speechSynthesis) {
-      setSpeechOk(false);
+      setSpeechSupported(false);
       return;
     }
-    const loadVoices = () => setVoices(window.speechSynthesis.getVoices());
+    const synth = window.speechSynthesis;
+    const loadVoices = () => {
+      const list = synth.getVoices();
+      if (list && list.length) {
+        setVoices(list);
+        setGreekVoiceAvailable(list.some((v) => v.lang && v.lang.toLowerCase().startsWith("el")));
+      }
+    };
     loadVoices();
-    window.speechSynthesis.onvoiceschanged = loadVoices;
+    synth.addEventListener?.("voiceschanged", loadVoices);
+    synth.onvoiceschanged = loadVoices;
+    // Fallback-Polling für Browser, die das Event nicht feuern
+    const retries = [200, 600, 1200, 2500].map((ms) => setTimeout(loadVoices, ms));
+    return () => {
+      synth.removeEventListener?.("voiceschanged", loadVoices);
+      retries.forEach(clearTimeout);
+    };
   }, []);
 
   const speak = (text) => {
     try {
-      if (!window.speechSynthesis) {
-        setSpeechOk(false);
+      const synth = window.speechSynthesis;
+      if (!synth) {
+        setSpeechSupported(false);
         return;
       }
-      window.speechSynthesis.cancel();
+      // Chrome bleibt manchmal im "paused"-Zustand hängen -> aufwecken.
+      if (synth.paused) synth.resume();
+      synth.cancel();
+
+      // Stimmen ggf. jetzt erst holen (falls State noch leer war).
+      let list = voices;
+      if (!list || list.length === 0) {
+        list = synth.getVoices() || [];
+        if (list.length) {
+          setVoices(list);
+          setGreekVoiceAvailable(list.some((v) => v.lang && v.lang.toLowerCase().startsWith("el")));
+        }
+      }
+
       const utter = new SpeechSynthesisUtterance(text);
-      const greekVoice = voices.find((v) => v.lang && v.lang.toLowerCase().startsWith("el"));
-      if (greekVoice) utter.voice = greekVoice;
-      utter.lang = "el-GR";
-      utter.rate = 0.8;
-      utter.onerror = () => setSpeechOk(false);
-      window.speechSynthesis.speak(utter);
+      const greekVoices = list.filter((v) => v.lang && v.lang.toLowerCase().startsWith("el"));
+      const greekVoice = greekVoices.find((v) => v.localService) || greekVoices[0];
+      if (greekVoice) {
+        utter.voice = greekVoice;
+        utter.lang = greekVoice.lang;
+      } else {
+        // Keine griechische Stimme: trotzdem mit el-GR versuchen,
+        // manche Systeme (Android/iOS) sprechen es dann doch.
+        utter.lang = "el-GR";
+      }
+      utter.rate = 0.75;
+      utter.onerror = (e) => {
+        // cancel() löst beim vorherigen Utterance "interrupted"/"canceled" aus – ignorieren.
+        if (e && (e.error === "interrupted" || e.error === "canceled")) return;
+        setSpeechSupported(false);
+      };
+      synth.speak(utter);
     } catch (e) {
-      setSpeechOk(false);
+      setSpeechSupported(false);
     }
   };
 
@@ -174,6 +235,7 @@ export default function GreekLearningApp() {
         if (Array.isArray(data.learned)) setLearned(new Set(data.learned));
         if (typeof data.currentIndex === "number") setCurrentIndex(data.currentIndex);
         if (data.screen === "lesson" || data.screen === "home") setScreen(data.screen);
+        if (typeof data.catId === "string" && CATS.some((c) => c.id === data.catId)) setCatId(data.catId);
       }
     } catch (e) {
       // noch kein gespeicherter Fortschritt vorhanden
@@ -190,13 +252,14 @@ export default function GreekLearningApp() {
         JSON.stringify({
           learned: Array.from(learned),
           currentIndex,
-          screen: screen === "quiz" ? "home" : screen,
+          screen: screen === "quiz" || screen === "cats" ? "home" : screen,
+          catId,
         })
       );
     } catch (e) {
       // Speichern fehlgeschlagen, Sitzung läuft trotzdem weiter
     }
-  }, [learned, currentIndex, screen, loading]);
+  }, [learned, currentIndex, screen, catId, loading]);
 
   useEffect(() => {
     if (loading || screen !== "lesson") return;
@@ -259,11 +322,13 @@ export default function GreekLearningApp() {
     setTimeout(() => buildQuizRound(quizPool), 1100);
   };
 
+  const noGreekVoiceHint = speechSupported && !greekVoiceAvailable;
+
   if (loading) {
     return (
       <div className="min-h-screen w-full flex flex-col items-center justify-center gap-4" style={{ background: "#FBF6EC" }}>
         <style>{introStyles}</style>
-        <CatFace height={110} />
+        <CatFace height={110} cat={selectedCat} />
         <p className="text-sm" style={{ color: "#8A9AA5" }}>Einen Moment ...</p>
       </div>
     );
@@ -275,9 +340,9 @@ export default function GreekLearningApp() {
 
       {screen === "home" && (
         <div className="max-w-md mx-auto min-h-screen flex flex-col items-center justify-center px-6 py-10 text-center gap-6">
-          <CatFace height={190} celebrate={celebrating} />
+          <CatFace height={190} celebrate={celebrating} cat={selectedCat} />
           <SpeechBubble>
-            {learned.size === 0 && "Γεια σου! Ich bin Mia. Lass uns zusammen Griechisch lernen!"}
+            {learned.size === 0 && `Γεια σου! Ich bin ${selectedCat.name}. Lass uns zusammen Griechisch lernen!`}
             {learned.size > 0 && !allLearned && "Weiter geht's! Du machst das wirklich gut."}
             {allLearned && "Du kennst schon alle Buchstaben dieser Lektion! Wollen wir spielen?"}
           </SpeechBubble>
@@ -301,6 +366,14 @@ export default function GreekLearningApp() {
             </button>
           )}
 
+          <button
+            onClick={() => setScreen("cats")}
+            className="w-full py-3 rounded-full text-base font-medium flex items-center justify-center gap-2"
+            style={{ background: "#FFFFFF", color: "#5C7180", border: "2px solid #E4DED0" }}
+          >
+            <Cat size={17} /> Katze aussuchen
+          </button>
+
           <div className="flex gap-2 mt-2">
             {LOCKED.map((l) => (
               <div key={l.title} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs" style={{ background: "#F1EEE6", color: "#A7AEB4" }}>
@@ -308,6 +381,53 @@ export default function GreekLearningApp() {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {screen === "cats" && (
+        <div className="max-w-md mx-auto min-h-screen flex flex-col px-6 py-8">
+          <div className="flex items-center justify-between mb-4">
+            <button onClick={() => setScreen("home")} className="flex items-center gap-1.5 text-sm" style={{ color: "#8A9AA5" }}>
+              <ArrowLeft size={16} /> Zurück
+            </button>
+            <div style={{ width: 20 }} />
+          </div>
+
+          <h1 className="text-xl font-medium text-center mb-1" style={{ color: "#1B4F72" }}>Such dir eine Katze aus</h1>
+          <p className="text-sm text-center mb-6" style={{ color: "#8A9AA5" }}>Sie begleitet dich beim Lernen.</p>
+
+          <div className="grid grid-cols-2 gap-3">
+            {CATS.map((c) => {
+              const active = c.id === catId;
+              return (
+                <button
+                  key={c.id}
+                  onClick={() => setCatId(c.id)}
+                  className="relative flex flex-col items-center gap-1 rounded-3xl py-4"
+                  style={{
+                    background: active ? "#EAF1F6" : "#FFFFFF",
+                    border: `2.5px solid ${active ? "#1B4F72" : "#E4DED0"}`,
+                  }}
+                >
+                  {active && (
+                    <span className="absolute top-2 right-2 flex items-center justify-center rounded-full" style={{ width: 22, height: 22, background: "#1B4F72" }}>
+                      <Check size={14} color="#FBF6EC" />
+                    </span>
+                  )}
+                  <CatFace height={92} cat={c} />
+                  <span className="text-base font-medium" style={{ color: "#2C3E4A" }}>{c.name}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <button
+            onClick={() => setScreen("home")}
+            className="w-full py-4 rounded-full text-lg font-medium mt-6"
+            style={{ background: "#1B4F72", color: "#FBF6EC" }}
+          >
+            Mit {selectedCat.name} lernen
+          </button>
         </div>
       )}
 
@@ -326,7 +446,7 @@ export default function GreekLearningApp() {
           </div>
 
           <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center">
-            <CatFace height={150} celebrate={celebrating} />
+            <CatFace height={150} celebrate={celebrating} cat={selectedCat} />
             <SpeechBubble>
               Das ist {LESSON[currentIndex].name}. Es {LESSON[currentIndex].short}.
             </SpeechBubble>
@@ -377,7 +497,7 @@ export default function GreekLearningApp() {
             <ArrowLeft size={15} /> Zurück
           </button>
 
-          <CatFace height={130} celebrate={quizFeedback === "right"} />
+          <CatFace height={130} celebrate={quizFeedback === "right"} cat={selectedCat} />
           <p className="text-sm" style={{ color: "#8A9AA5" }}>Punkte: {quizScore}</p>
           <SpeechBubble>Welcher Buchstabe war das?</SpeechBubble>
 
@@ -410,6 +530,12 @@ export default function GreekLearningApp() {
               {quizFeedback === "right" ? "Toll gemacht!" : "Fast! Weiter geht's."}
             </p>
           )}
+        </div>
+      )}
+
+      {noGreekVoiceHint && screen !== "cats" && (
+        <div className="fixed bottom-3 left-1/2 -translate-x-1/2 w-[92%] max-w-md rounded-2xl px-4 py-2.5 text-xs text-center" style={{ background: "#FBEFD9", color: "#8A6420", border: "1px solid #EBCF97" }}>
+          Auf diesem Gerät ist keine griechische Stimme installiert – der Ton bleibt evtl. stumm. In den Geräte-Einstellungen unter „Sprache/Text-to-Speech" Griechisch (ελληνικά) hinzufügen.
         </div>
       )}
     </div>
