@@ -1,552 +1,225 @@
-import React, { useState, useEffect } from "react";
-import { Volume2, ArrowLeft, ArrowRight, Sparkles, Lock, Check, Cat } from "lucide-react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import Mascot from "./components/Mascot.jsx";
+import { C, Confetti, PrimaryButton, SpeechBubble } from "./components/ui.jsx";
+import Home from "./screens/Home.jsx";
+import Lesson from "./screens/Lesson.jsx";
+import Practice from "./screens/Practice.jsx";
+import Mascots from "./screens/Mascots.jsx";
+import BadgesScreen from "./screens/Badges.jsx";
+import Backup from "./screens/Backup.jsx";
+import { LESSONS, ALL_CARDS, cardKey } from "./data/lessons.js";
+import { getMascot } from "./data/mascots.js";
+import { loadProgress, saveProgress, clearProgress, emptyProgress } from "./lib/storage.js";
+import { initSpeech, subscribeSpeech } from "./lib/speech.js";
+import { normalizeCard } from "./lib/exercises.js";
+import { bumpStreak, newBadges, levelInfo, XP_CORRECT, XP_NO_HINT_BONUS, XP_NEW_CARD } from "./lib/game.js";
 
-const STORAGE_KEY = "kitty-greek-progress-v1";
-
-const LESSON = [
-  { upper: "Α", lower: "α", name: "Άλφα", short: "klingt wie A", phonetic: "a", emoji: "🐴", word: "άλογο", meaning: "Pferd" },
-  { upper: "Β", lower: "β", name: "Βήτα", short: "klingt wie W", phonetic: "w", emoji: "📖", word: "βιβλίο", meaning: "Buch" },
-  { upper: "Γ", lower: "γ", name: "Γάμμα", short: "klingt weich, fast wie J", phonetic: "j", emoji: "🐱", word: "γάτα", meaning: "Katze" },
-  { upper: "Δ", lower: "δ", name: "Δέλτα", short: "klingt wie das englische TH", phonetic: "th", emoji: "🌳", word: "δέντρο", meaning: "Baum" },
-  { upper: "Ε", lower: "ε", name: "Έψιλον", short: "klingt wie ein kurzes E", phonetic: "e", emoji: "🐘", word: "ελέφαντας", meaning: "Elefant" },
-  { upper: "Ζ", lower: "ζ", name: "Ζήτα", short: "klingt weich wie ein S", phonetic: "s", emoji: "🍬", word: "ζάχαρη", meaning: "Zucker" },
-];
-
-const LOCKED = [
-  { title: "Lektion 2", count: 6 },
-  { title: "Lektion 3", count: 12 },
-];
-
-// Auswählbare Katzen. fur = Fell, accent = Ohren/Nase/Wangen, bow = Schleife.
-const CATS = [
-  { id: "mia", name: "Mia", fur: "#FBF6EC", accent: "#E8974E", bow: "#2B6CA3" },
-  { id: "luna", name: "Luna", fur: "#C8D0D8", accent: "#EFA1BF", bow: "#7E6BB5" },
-  { id: "sunny", name: "Sunny", fur: "#F3B65E", accent: "#CE7B2C", bow: "#4C9A6A" },
-  { id: "rosa", name: "Rosa", fur: "#FDE7EE", accent: "#EF9BB6", bow: "#E8709A" },
-  { id: "coco", name: "Coco", fur: "#CDA985", accent: "#8A5A34", bow: "#3E7CB1" },
-  { id: "minze", name: "Minze", fur: "#C7E5D4", accent: "#5FB98C", bow: "#E58E5A" },
-];
-
-const DEFAULT_CAT = CATS[0];
-const getCat = (id) => CATS.find((c) => c.id === id) || DEFAULT_CAT;
-
-function CatFace({ height = 160, celebrate = false, cat = DEFAULT_CAT }) {
-  const width = Math.round(height * 0.86);
-  const { fur, accent, bow } = cat;
-  return (
-    <div className={celebrate ? "cat-celebrate" : "cat-idle"} style={{ position: "relative", width, height }}>
-      {celebrate && (
-        <>
-          <span className="sparkle" style={{ left: 0, top: 10 }}>✨</span>
-          <span className="sparkle" style={{ right: -2, top: 20 }}>✨</span>
-          <span className="sparkle" style={{ left: "42%", top: -6 }}>✨</span>
-        </>
-      )}
-      <svg width={width} height={height} viewBox="0 0 172 200" aria-hidden="true">
-        {/* tail */}
-        <path
-          d="M148,178 C186,176 194,128 166,104 C155,95 141,104 145,116 C150,130 165,136 160,156 C157,170 143,178 126,176"
-          fill={fur} stroke="#2C3E4A" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"
-        />
-        <path d="M160,110 C168,116 171,126 168,134" fill="none" stroke={accent} strokeWidth="4" strokeLinecap="round" />
-
-        {/* body */}
-        <path
-          d="M52,196 C46,142 60,110 86,110 C112,110 126,142 120,196 C120,204 96,208 86,208 C76,208 52,204 52,196 Z"
-          fill={fur} stroke="#2C3E4A" strokeWidth="4" strokeLinejoin="round"
-        />
-        <ellipse cx="86" cy="168" rx="24" ry="32" fill="#FFFFFF" opacity="0.45" />
-
-        {/* front paws */}
-        <ellipse cx="68" cy="200" rx="14" ry="9" fill={fur} stroke="#2C3E4A" strokeWidth="3.5" />
-        <ellipse cx="104" cy="200" rx="14" ry="9" fill={fur} stroke="#2C3E4A" strokeWidth="3.5" />
-        <path d="M62,198 L62,203 M68,199 L68,204 M74,198 L74,203" stroke="#2C3E4A" strokeWidth="2" strokeLinecap="round" />
-        <path d="M98,198 L98,203 M104,199 L104,204 M110,198 L110,203" stroke="#2C3E4A" strokeWidth="2" strokeLinecap="round" />
-
-        {/* bow */}
-        <path d="M72,132 L86,142 L100,132 L100,140 L86,150 L72,140 Z" fill={bow} stroke="#2C3E4A" strokeWidth="2.5" strokeLinejoin="round" />
-        <circle cx="86" cy="140" r="4" fill={fur} stroke="#2C3E4A" strokeWidth="2" />
-
-        {/* ears */}
-        <path d="M50,72 L36,26 L76,62 Z" fill={fur} stroke="#2C3E4A" strokeWidth="4" strokeLinejoin="round" />
-        <path d="M122,72 L136,26 L96,62 Z" fill={fur} stroke="#2C3E4A" strokeWidth="4" strokeLinejoin="round" />
-        <path d="M53,63 L43,36 L69,58 Z" fill={accent} />
-        <path d="M119,63 L129,36 L103,58 Z" fill={accent} />
-
-        {/* head */}
-        <circle cx="86" cy="98" r="52" fill={fur} stroke="#2C3E4A" strokeWidth="4" />
-        <path d="M126,80 Q150,84 148,66" fill={accent} stroke="#2C3E4A" strokeWidth="2.5" />
-
-        {/* blush */}
-        <circle cx="52" cy="112" r="9" fill={accent} opacity="0.35" />
-        <circle cx="120" cy="112" r="9" fill={accent} opacity="0.35" />
-
-        {/* eyes */}
-        {celebrate ? (
-          <>
-            <path d="M64,96 L72,102 L80,96" fill="none" stroke="#2C3E4A" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M92,96 L100,102 L108,96" fill="none" stroke="#2C3E4A" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
-          </>
-        ) : (
-          <>
-            <ellipse cx="70" cy="98" rx="6" ry="7.5" fill="#2C3E4A" />
-            <ellipse cx="102" cy="98" rx="6" ry="7.5" fill="#2C3E4A" />
-            <circle cx="72.5" cy="95" r="1.8" fill="#FBF6EC" />
-            <circle cx="104.5" cy="95" r="1.8" fill="#FBF6EC" />
-          </>
-        )}
-
-        {/* nose + mouth */}
-        <path d="M81,113 L91,113 L86,119 Z" fill={accent} />
-        <path d="M86,119 L86,124" stroke="#2C3E4A" strokeWidth="2" strokeLinecap="round" />
-        {celebrate ? (
-          <path d="M86,124 Q76,138 62,132 M86,124 Q96,138 110,132" fill="none" stroke="#2C3E4A" strokeWidth="3" strokeLinecap="round" />
-        ) : (
-          <>
-            <path d="M86,124 Q78,130 70,127" fill="none" stroke="#2C3E4A" strokeWidth="3" strokeLinecap="round" />
-            <path d="M86,124 Q94,130 102,127" fill="none" stroke="#2C3E4A" strokeWidth="3" strokeLinecap="round" />
-          </>
-        )}
-
-        {/* whiskers */}
-        <g stroke="#2C3E4A" strokeWidth="1.6" strokeLinecap="round">
-          <path d="M56,108 L28,102" /><path d="M56,114 L27,114" /><path d="M56,120 L28,126" />
-          <path d="M116,108 L144,102" /><path d="M116,114 L145,114" /><path d="M116,120 L144,126" />
-        </g>
-      </svg>
-    </div>
-  );
-}
-
-function SpeechBubble({ children }) {
-  return (
-    <div className="rounded-3xl px-5 py-4 text-base sm:text-lg leading-snug" style={{ background: "#FFFFFF", color: "#2C3E4A", border: "2px solid #E4DED0" }}>
-      {children}
-    </div>
-  );
-}
-
-function PawRow({ total, filled }) {
-  return (
-    <div className="flex gap-1.5 justify-center">
-      {Array.from({ length: total }).map((_, i) => (
-        <span key={i} className="text-lg" style={{ opacity: i < filled ? 1 : 0.25 }}>🐾</span>
-      ))}
-    </div>
-  );
-}
-
-export default function GreekLearningApp() {
+export default function App() {
   const [loading, setLoading] = useState(true);
-  const [learned, setLearned] = useState(new Set());
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [progress, setProgress] = useState(emptyProgress);
   const [screen, setScreen] = useState("home");
-  const [celebrating, setCelebrating] = useState(false);
-  const [catId, setCatId] = useState(DEFAULT_CAT.id);
+  const [lessonId, setLessonId] = useState(LESSONS[0].id);
+  const [itemIndex, setItemIndex] = useState(0);
+  const [mood, setMood] = useState("idle");
+  const [confettiRun, setConfettiRun] = useState(0);
+  const [awards, setAwards] = useState([]);
+  const [speechState, setSpeechState] = useState({ supported: true, ready: false, greekVoice: true });
+  const lastLevel = useRef(1);
 
-  const [voices, setVoices] = useState([]);
-  const [speechSupported, setSpeechSupported] = useState(true);
-  const [greekVoiceAvailable, setGreekVoiceAvailable] = useState(true);
-
-  const [quizPool, setQuizPool] = useState([]);
-  const [quizAnswer, setQuizAnswer] = useState(null);
-  const [quizChoices, setQuizChoices] = useState([]);
-  const [quizFeedback, setQuizFeedback] = useState(null);
-  const [quizScore, setQuizScore] = useState(0);
-
-  const selectedCat = getCat(catId);
-
-  // Stimmen laden. getVoices() ist in vielen Browsern erst nach dem
-  // "voiceschanged"-Event gefüllt, deshalb hören wir darauf UND fragen
-  // ein paarmal aktiv nach.
+  // ── Start ──
   useEffect(() => {
-    if (typeof window === "undefined" || !window.speechSynthesis) {
-      setSpeechSupported(false);
-      return;
-    }
-    const synth = window.speechSynthesis;
-    const loadVoices = () => {
-      const list = synth.getVoices();
-      if (list && list.length) {
-        setVoices(list);
-        setGreekVoiceAvailable(list.some((v) => v.lang && v.lang.toLowerCase().startsWith("el")));
-      }
-    };
-    loadVoices();
-    synth.addEventListener?.("voiceschanged", loadVoices);
-    synth.onvoiceschanged = loadVoices;
-    // Fallback-Polling für Browser, die das Event nicht feuern
-    const retries = [200, 600, 1200, 2500].map((ms) => setTimeout(loadVoices, ms));
-    return () => {
-      synth.removeEventListener?.("voiceschanged", loadVoices);
-      retries.forEach(clearTimeout);
-    };
+    const p = loadProgress();
+    setProgress(p);
+    lastLevel.current = levelInfo(p.xp || 0).level;
+    setLoading(false);
+    const stopSpeech = initSpeech();
+    const unsub = subscribeSpeech(setSpeechState);
+    return () => { stopSpeech(); unsub(); };
   }, []);
 
-  const speak = (text) => {
-    try {
-      const synth = window.speechSynthesis;
-      if (!synth) {
-        setSpeechSupported(false);
-        return;
-      }
-      // Chrome bleibt manchmal im "paused"-Zustand hängen -> aufwecken.
-      if (synth.paused) synth.resume();
-      synth.cancel();
-
-      // Stimmen ggf. jetzt erst holen (falls State noch leer war).
-      let list = voices;
-      if (!list || list.length === 0) {
-        list = synth.getVoices() || [];
-        if (list.length) {
-          setVoices(list);
-          setGreekVoiceAvailable(list.some((v) => v.lang && v.lang.toLowerCase().startsWith("el")));
-        }
-      }
-
-      const utter = new SpeechSynthesisUtterance(text);
-      const greekVoices = list.filter((v) => v.lang && v.lang.toLowerCase().startsWith("el"));
-      const greekVoice = greekVoices.find((v) => v.localService) || greekVoices[0];
-      if (greekVoice) {
-        utter.voice = greekVoice;
-        utter.lang = greekVoice.lang;
-      } else {
-        // Keine griechische Stimme: trotzdem mit el-GR versuchen,
-        // manche Systeme (Android/iOS) sprechen es dann doch.
-        utter.lang = "el-GR";
-      }
-      utter.rate = 0.75;
-      utter.onerror = (e) => {
-        // cancel() löst beim vorherigen Utterance "interrupted"/"canceled" aus – ignorieren.
-        if (e && (e.error === "interrupted" || e.error === "canceled")) return;
-        setSpeechSupported(false);
-      };
-      synth.speak(utter);
-    } catch (e) {
-      setSpeechSupported(false);
-    }
-  };
-
+  // ── Autosave nach jeder Änderung ──
   useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const data = JSON.parse(raw);
-        if (Array.isArray(data.learned)) setLearned(new Set(data.learned));
-        if (typeof data.currentIndex === "number") setCurrentIndex(data.currentIndex);
-        if (data.screen === "lesson" || data.screen === "home") setScreen(data.screen);
-        if (typeof data.catId === "string" && CATS.some((c) => c.id === data.catId)) setCatId(data.catId);
-      }
-    } catch (e) {
-      // noch kein gespeicherter Fortschritt vorhanden
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    if (!loading) saveProgress(progress);
+  }, [progress, loading]);
 
+  // Jede Änderung zählt als Aktivität für die Tagesserie.
+  const update = (updater) => setProgress((p) => bumpStreak(typeof updater === "function" ? updater(p) : updater));
+
+  // ── Neue Abzeichen vergeben (als Effekt, nicht im Updater) ──
   useEffect(() => {
     if (loading) return;
-    try {
-      window.localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({
-          learned: Array.from(learned),
-          currentIndex,
-          screen: screen === "quiz" || screen === "cats" ? "home" : screen,
-          catId,
-        })
-      );
-    } catch (e) {
-      // Speichern fehlgeschlagen, Sitzung läuft trotzdem weiter
-    }
-  }, [learned, currentIndex, screen, catId, loading]);
+    const earned = newBadges(progress);
+    if (!earned.length) return;
+    setProgress((p) => ({ ...p, badges: [...(p.badges || []), ...earned.map((b) => b.id)] }));
+    setAwards((a) => [...a, ...earned.map((b) => ({ kind: "badge", badge: b }))]);
+    setConfettiRun((r) => r + 1);
+  }, [progress, loading]);
 
+  // ── Level-Aufstieg feiern ──
   useEffect(() => {
-    if (loading || screen !== "lesson") return;
-    if (!learned.has(currentIndex)) {
-      setCelebrating(true);
-      setLearned((prev) => new Set(prev).add(currentIndex));
-      const t = setTimeout(() => setCelebrating(false), 1000);
-      return () => clearTimeout(t);
+    if (loading) return;
+    const lvl = levelInfo(progress.xp || 0);
+    if (lvl.level > lastLevel.current) {
+      lastLevel.current = lvl.level;
+      setAwards((a) => [...a, { kind: "level", level: lvl }]);
+      setConfettiRun((r) => r + 1);
     }
-  }, [currentIndex, screen, loading]);
+  }, [progress.xp, loading]);
 
-  const firstUnlearned = LESSON.findIndex((_, i) => !learned.has(i));
-  const allLearned = learned.size >= LESSON.length;
+  const mascot = getMascot(progress.mascot);
+  const lesson = LESSONS.find((l) => l.id === lessonId) || LESSONS[0];
+  const normalizedAll = useMemo(() => ALL_CARDS.map(normalizeCard), []);
+  const learnedPool = useMemo(
+    () => normalizedAll.filter((c) => progress.learned[c.key]),
+    [normalizedAll, progress.learned]
+  );
 
-  const startLesson = () => {
-    const target = firstUnlearned === -1 ? 0 : firstUnlearned;
-    setCurrentIndex(target);
+  const flashMood = (m) => { setMood(m); setTimeout(() => setMood("idle"), 900); };
+
+  // ── Lernen ──
+  const openLesson = (id) => {
+    const l = LESSONS.find((x) => x.id === id) || LESSONS[0];
+    const firstNew = l.items.findIndex((it) => !progress.learned[cardKey(l.id, it.id)]);
+    setLessonId(id);
+    setItemIndex(firstNew === -1 ? 0 : firstNew);
     setScreen("lesson");
   };
 
-  const nextLetter = () => {
-    if (currentIndex < LESSON.length - 1) setCurrentIndex((i) => i + 1);
-    else setScreen("home");
+  // Eine aufgeschlagene Karte gilt als gelernt (kleine XP beim ersten Mal).
+  useEffect(() => {
+    if (loading || screen !== "lesson") return;
+    const item = lesson.items[itemIndex];
+    if (!item) return;
+    const key = cardKey(lesson.id, item.id);
+    if (progress.learned[key]) return;
+    flashMood("happy");
+    update((p) => (p.learned[key] ? p : {
+      ...p,
+      learned: { ...p.learned, [key]: 1 },
+      xp: (p.xp || 0) + XP_NEW_CARD,
+    }));
+    // progress absichtlich nicht in den Abhängigkeiten – sonst Endlosschleife.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [screen, itemIndex, lessonId, loading]);
+
+  const nextItem = () => {
+    if (itemIndex < lesson.items.length - 1) setItemIndex((i) => i + 1);
+    else { setConfettiRun((r) => r + 1); setScreen("home"); }
   };
 
-  const prevLetter = () => {
-    if (currentIndex > 0) setCurrentIndex((i) => i - 1);
-    else setScreen("home");
+  // ── Üben ──
+  const handleResult = (correct, usedHint, key, run) => {
+    flashMood(correct ? "happy" : "sad");
+    update((p) => correct
+      ? {
+          ...p,
+          bestRun: Math.max(p.bestRun || 0, run),
+          xp: (p.xp || 0) + XP_CORRECT + (usedHint ? 0 : XP_NO_HINT_BONUS),
+          correct: { ...p.correct, [key]: (p.correct?.[key] || 0) + 1 },
+          answered: (p.answered || 0) + 1,
+          totalCorrect: (p.totalCorrect || 0) + 1,
+        }
+      : { ...p, answered: (p.answered || 0) + 1 });
   };
-
-  const buildQuizRound = (pool) => {
-    const correct = pool[Math.floor(Math.random() * pool.length)];
-    const others = pool.filter((i) => i !== correct);
-    const wrongPoolSource = others.length >= 3 ? others : LESSON.map((_, i) => i).filter((i) => i !== correct);
-    const wrong = [];
-    while (wrong.length < 3 && wrongPoolSource.length > 0) {
-      const pick = wrongPoolSource[Math.floor(Math.random() * wrongPoolSource.length)];
-      if (!wrong.includes(pick)) wrong.push(pick);
-    }
-    const choices = [...wrong, correct].sort(() => Math.random() - 0.5);
-    setQuizAnswer(correct);
-    setQuizChoices(choices);
-    setQuizFeedback(null);
-    speak(LESSON[correct].upper + LESSON[correct].lower);
-  };
-
-  const startQuiz = () => {
-    const pool = Array.from(learned);
-    setQuizPool(pool);
-    setQuizScore(0);
-    setScreen("quiz");
-    buildQuizRound(pool);
-  };
-
-  const answerQuiz = (choiceIdx) => {
-    if (quizFeedback) return;
-    const correct = choiceIdx === quizAnswer;
-    setQuizFeedback(correct ? "right" : "wrong");
-    if (correct) setQuizScore((s) => s + 1);
-    setTimeout(() => buildQuizRound(quizPool), 1100);
-  };
-
-  const noGreekVoiceHint = speechSupported && !greekVoiceAvailable;
 
   if (loading) {
     return (
-      <div className="min-h-screen w-full flex flex-col items-center justify-center gap-4" style={{ background: "#FBF6EC" }}>
-        <style>{introStyles}</style>
-        <CatFace height={110} cat={selectedCat} />
-        <p className="text-sm" style={{ color: "#8A9AA5" }}>Einen Moment ...</p>
+      <div className="min-h-screen w-full flex flex-col items-center justify-center gap-4" style={{ background: C.bg }}>
+        <style>{styles}</style>
+        <Mascot height={110} />
+        <p className="text-sm" style={{ color: C.mute }}>Einen Moment …</p>
       </div>
     );
   }
 
+  const award = awards[0] || null;
+
   return (
-    <div className="min-h-screen w-full" style={{ background: "#FBF6EC" }}>
-      <style>{introStyles}</style>
+    <div className="min-h-screen w-full" style={{ background: C.bg }}>
+      <style>{styles}</style>
+      <Confetti run={confettiRun} />
 
       {screen === "home" && (
-        <div className="max-w-md mx-auto min-h-screen flex flex-col items-center justify-center px-6 py-10 text-center gap-6">
-          <CatFace height={190} celebrate={celebrating} cat={selectedCat} />
-          <SpeechBubble>
-            {learned.size === 0 && `Γεια σου! Ich bin ${selectedCat.name}. Lass uns zusammen Griechisch lernen!`}
-            {learned.size > 0 && !allLearned && "Weiter geht's! Du machst das wirklich gut."}
-            {allLearned && "Du kennst schon alle Buchstaben dieser Lektion! Wollen wir spielen?"}
-          </SpeechBubble>
-
-          <div className="w-full flex flex-col items-center gap-2">
-            <PawRow total={LESSON.length} filled={learned.size} />
-            <p className="text-sm" style={{ color: "#8A9AA5" }}>{learned.size} von {LESSON.length} Buchstaben gelernt</p>
-          </div>
-
-          <button onClick={startLesson} className="w-full py-4 rounded-full text-lg font-medium" style={{ background: "#1B4F72", color: "#FBF6EC" }}>
-            {allLearned ? "Nochmal üben" : "Weiter lernen"}
-          </button>
-
-          {learned.size >= 3 && (
-            <button
-              onClick={startQuiz}
-              className="w-full py-3.5 rounded-full text-base font-medium flex items-center justify-center gap-2"
-              style={{ background: "#FFFFFF", color: "#B5722B", border: "2px solid #E8974E" }}
-            >
-              <Sparkles size={16} /> Rate-Spiel spielen
-            </button>
-          )}
-
-          <button
-            onClick={() => setScreen("cats")}
-            className="w-full py-3 rounded-full text-base font-medium flex items-center justify-center gap-2"
-            style={{ background: "#FFFFFF", color: "#5C7180", border: "2px solid #E4DED0" }}
-          >
-            <Cat size={17} /> Katze aussuchen
-          </button>
-
-          <div className="flex gap-2 mt-2">
-            {LOCKED.map((l) => (
-              <div key={l.title} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs" style={{ background: "#F1EEE6", color: "#A7AEB4" }}>
-                <Lock size={11} /> {l.title} bald
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {screen === "cats" && (
-        <div className="max-w-md mx-auto min-h-screen flex flex-col px-6 py-8">
-          <div className="flex items-center justify-between mb-4">
-            <button onClick={() => setScreen("home")} className="flex items-center gap-1.5 text-sm" style={{ color: "#8A9AA5" }}>
-              <ArrowLeft size={16} /> Zurück
-            </button>
-            <div style={{ width: 20 }} />
-          </div>
-
-          <h1 className="text-xl font-medium text-center mb-1" style={{ color: "#1B4F72" }}>Such dir eine Katze aus</h1>
-          <p className="text-sm text-center mb-6" style={{ color: "#8A9AA5" }}>Sie begleitet dich beim Lernen.</p>
-
-          <div className="grid grid-cols-2 gap-3">
-            {CATS.map((c) => {
-              const active = c.id === catId;
-              return (
-                <button
-                  key={c.id}
-                  onClick={() => setCatId(c.id)}
-                  className="relative flex flex-col items-center gap-1 rounded-3xl py-4"
-                  style={{
-                    background: active ? "#EAF1F6" : "#FFFFFF",
-                    border: `2.5px solid ${active ? "#1B4F72" : "#E4DED0"}`,
-                  }}
-                >
-                  {active && (
-                    <span className="absolute top-2 right-2 flex items-center justify-center rounded-full" style={{ width: 22, height: 22, background: "#1B4F72" }}>
-                      <Check size={14} color="#FBF6EC" />
-                    </span>
-                  )}
-                  <CatFace height={92} cat={c} />
-                  <span className="text-base font-medium" style={{ color: "#2C3E4A" }}>{c.name}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          <button
-            onClick={() => setScreen("home")}
-            className="w-full py-4 rounded-full text-lg font-medium mt-6"
-            style={{ background: "#1B4F72", color: "#FBF6EC" }}
-          >
-            Mit {selectedCat.name} lernen
-          </button>
-        </div>
+        <Home progress={progress} mascot={mascot} onStartLesson={openLesson}
+          onPractice={() => setScreen("practice")} onNav={setScreen} />
       )}
 
       {screen === "lesson" && (
-        <div className="max-w-md mx-auto min-h-screen flex flex-col px-6 py-6">
-          <div className="flex items-center justify-between mb-2">
-            <button onClick={() => setScreen("home")} style={{ color: "#8A9AA5" }}>
-              <ArrowLeft size={20} />
-            </button>
-            <div className="flex gap-1.5">
-              {LESSON.map((_, i) => (
-                <span key={i} className="w-2 h-2 rounded-full" style={{ background: i === currentIndex ? "#1B4F72" : learned.has(i) ? "#B7CBD6" : "#E4DED0" }} />
-              ))}
-            </div>
-            <div style={{ width: 20 }} />
-          </div>
-
-          <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center">
-            <CatFace height={150} celebrate={celebrating} cat={selectedCat} />
-            <SpeechBubble>
-              Das ist {LESSON[currentIndex].name}. Es {LESSON[currentIndex].short}.
-            </SpeechBubble>
-
-            <div className="flex flex-col items-center gap-2">
-              <button onClick={() => speak(LESSON[currentIndex].upper + LESSON[currentIndex].lower)} className="flex flex-col items-center gap-2">
-                <div className="w-28 h-28 rounded-full flex items-center justify-center" style={{ background: "linear-gradient(180deg,#2B6CA3 0%,#1B4F72 100%)", border: "3px solid #173F5C" }}>
-                  <div className="w-[78%] aspect-square rounded-full bg-[#FBF6EC] flex items-center justify-center">
-                    <span className="text-4xl" style={{ fontFamily: "Georgia, serif", color: "#1B4F72" }}>
-                      {LESSON[currentIndex].upper}{LESSON[currentIndex].lower}
-                    </span>
-                  </div>
-                </div>
-                <span className="flex items-center gap-1 text-sm" style={{ color: "#5C7180" }}>
-                  <Volume2 size={14} /> antippen zum Hören
-                </span>
-              </button>
-              <span className="text-xs px-3 py-1 rounded-full" style={{ background: "#EFEAE0", color: "#5C7180" }}>
-                spricht sich ungefähr: {LESSON[currentIndex].phonetic}
-              </span>
-            </div>
-
-            <div className="rounded-2xl px-5 py-3 flex items-center gap-3" style={{ background: "#FFFFFF", border: "2px solid #E4DED0" }}>
-              <span className="text-3xl">{LESSON[currentIndex].emoji}</span>
-              <div className="text-left">
-                <p style={{ fontFamily: "Georgia, serif", color: "#1B4F72" }} className="text-lg">{LESSON[currentIndex].word}</p>
-                <p className="text-sm" style={{ color: "#8A9AA5" }}>{LESSON[currentIndex].meaning}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex gap-3 mt-4">
-            {currentIndex > 0 && (
-              <button onClick={prevLetter} className="py-3.5 px-5 rounded-full" style={{ background: "#FFFFFF", border: "2px solid #E4DED0", color: "#5C7180" }}>
-                <ArrowLeft size={18} />
-              </button>
-            )}
-            <button onClick={nextLetter} className="flex-1 py-3.5 rounded-full text-base font-medium flex items-center justify-center gap-2" style={{ background: "#1B4F72", color: "#FBF6EC" }}>
-              {currentIndex < LESSON.length - 1 ? "Weiter" : "Fertig"} <ArrowRight size={17} />
-            </button>
-          </div>
-        </div>
+        <Lesson lesson={lesson} index={itemIndex} mascot={mascot} mood={mood}
+          onNext={nextItem} onPrev={() => setItemIndex((i) => Math.max(0, i - 1))}
+          onExit={() => setScreen("home")} />
       )}
 
-      {screen === "quiz" && quizAnswer !== null && (
-        <div className="max-w-md mx-auto min-h-screen flex flex-col items-center justify-center px-6 py-10 text-center gap-5">
-          <button onClick={() => setScreen("home")} className="self-start flex items-center gap-1.5 text-sm" style={{ color: "#8A9AA5" }}>
-            <ArrowLeft size={15} /> Zurück
-          </button>
-
-          <CatFace height={130} celebrate={quizFeedback === "right"} cat={selectedCat} />
-          <p className="text-sm" style={{ color: "#8A9AA5" }}>Punkte: {quizScore}</p>
-          <SpeechBubble>Welcher Buchstabe war das?</SpeechBubble>
-
-          <button onClick={() => speak(LESSON[quizAnswer].upper + LESSON[quizAnswer].lower)} className="w-20 h-20 rounded-full flex items-center justify-center" style={{ background: "#1B4F72" }}>
-            <Volume2 size={28} color="#FBF6EC" />
-          </button>
-          <span className="text-xs px-3 py-1 rounded-full -mt-3" style={{ background: "#EFEAE0", color: "#5C7180" }}>
-            Tipp: spricht sich {LESSON[quizAnswer].phonetic}
-          </span>
-
-          <div className="grid grid-cols-2 gap-3 w-full">
-            {quizChoices.map((choiceIdx) => {
-              const isCorrectTile = quizFeedback && choiceIdx === quizAnswer;
-              return (
-                <button
-                  key={choiceIdx}
-                  onClick={() => answerQuiz(choiceIdx)}
-                  disabled={!!quizFeedback}
-                  className="py-6 rounded-2xl text-3xl"
-                  style={{ fontFamily: "Georgia, serif", background: isCorrectTile ? "#DDEFE0" : "#FFFFFF", border: `2px solid ${isCorrectTile ? "#4C9A6A" : "#E4DED0"}`, color: "#1B4F72" }}
-                >
-                  {LESSON[choiceIdx].upper}{LESSON[choiceIdx].lower}
-                </button>
-              );
-            })}
+      {screen === "practice" && (
+        learnedPool.length >= 4 ? (
+          <Practice pool={learnedPool} allCards={normalizedAll} mascot={mascot}
+            onResult={handleResult} onExit={() => setScreen("home")} />
+        ) : (
+          <div className="max-w-md mx-auto min-h-screen flex flex-col items-center justify-center gap-4 px-6 text-center">
+            <Mascot height={130} mascot={mascot} />
+            <SpeechBubble>Lerne erst ein paar Karten, dann üben wir zusammen!</SpeechBubble>
+            <PrimaryButton onClick={() => setScreen("home")}>Zurück</PrimaryButton>
           </div>
+        )
+      )}
 
-          {quizFeedback && (
-            <p className="text-sm" style={{ color: quizFeedback === "right" ? "#4C9A6A" : "#C2604A" }}>
-              {quizFeedback === "right" ? "Toll gemacht!" : "Fast! Weiter geht's."}
+      {screen === "mascots" && (
+        <Mascots currentId={progress.mascot}
+          onPick={(id) => update((p) => ({ ...p, mascot: id }))}
+          onDone={() => setScreen("home")} />
+      )}
+
+      {screen === "badges" && <BadgesScreen progress={progress} onDone={() => setScreen("home")} />}
+
+      {screen === "backup" && (
+        <Backup progress={progress}
+          onSaveNow={() => saveProgress(progress)}
+          onImport={(p) => { setProgress(p); lastLevel.current = levelInfo(p.xp || 0).level; }}
+          onReset={() => { clearProgress(); setProgress(emptyProgress()); lastLevel.current = 1; setAwards([]); }}
+          onDone={() => setScreen("home")} />
+      )}
+
+      {/* Feier für Abzeichen und neue Level */}
+      {award && (
+        <div className="fixed inset-0 flex items-center justify-center px-6" style={{ background: "rgba(27,79,114,.45)", zIndex: 60 }}>
+          <div className="w-full max-w-sm rounded-3xl px-6 py-7 text-center flex flex-col items-center gap-2"
+            style={{ background: C.card, border: `3px solid ${C.orange}` }}>
+            <p className="text-5xl">{award.kind === "badge" ? award.badge.emoji : award.level.emoji}</p>
+            <p className="text-sm" style={{ color: C.orangeInk }}>
+              {award.kind === "badge" ? "Neues Abzeichen!" : "Neues Level!"}
             </p>
-          )}
+            <p className="text-xl font-medium" style={{ color: C.blue }}>
+              {award.kind === "badge" ? award.badge.title : `Level ${award.level.level} · ${award.level.title}`}
+            </p>
+            <p className="text-sm mb-2" style={{ color: C.mute }}>
+              {award.kind === "badge" ? award.badge.desc : "Weiter so – du machst das super!"}
+            </p>
+            <PrimaryButton onClick={() => setAwards((a) => a.slice(1))}>Σούπερ!</PrimaryButton>
+          </div>
         </div>
       )}
 
-      {noGreekVoiceHint && screen !== "cats" && (
-        <div className="fixed bottom-3 left-1/2 -translate-x-1/2 w-[92%] max-w-md rounded-2xl px-4 py-2.5 text-xs text-center" style={{ background: "#FBEFD9", color: "#8A6420", border: "1px solid #EBCF97" }}>
-          Auf diesem Gerät ist keine griechische Stimme installiert – der Ton bleibt evtl. stumm. In den Geräte-Einstellungen unter „Sprache/Text-to-Speech" Griechisch (ελληνικά) hinzufügen.
+      {/* Hinweis, falls keine griechische Stimme installiert ist */}
+      {speechState.supported && speechState.ready && !speechState.greekVoice && screen !== "mascots" && (
+        <div className="fixed bottom-2 left-1/2 -translate-x-1/2 w-[92%] max-w-md rounded-2xl px-4 py-2 text-[11px] text-center"
+          style={{ background: "#FBEFD9", color: "#8A6420", border: "1px solid #EBCF97", zIndex: 40 }}>
+          Für den Ton fehlt eine griechische Stimme. In den Geräte-Einstellungen unter „Sprache / Text-in-Sprache“ Griechisch (ελληνικά) hinzufügen.
         </div>
       )}
     </div>
   );
 }
 
-const introStyles = `
+const styles = `
   @keyframes bob { 0%,100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-6px) rotate(-1.5deg); } }
-  @keyframes pop { 0% { transform: scale(1); } 40% { transform: scale(1.1); } 100% { transform: scale(1); } }
-  @keyframes sparkle { 0% { opacity: 0; transform: translateY(4px) scale(0.6); } 40% { opacity: 1; } 100% { opacity: 0; transform: translateY(-14px) scale(1); } }
-  .cat-idle { animation: bob 3.6s ease-in-out infinite; }
-  .cat-celebrate { animation: pop 0.5s ease-in-out; }
+  @keyframes pop { 0% { transform: scale(1); } 40% { transform: scale(1.12); } 100% { transform: scale(1); } }
+  @keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+  @keyframes sparkle { 0% { opacity: 0; transform: translateY(4px) scale(.6); } 40% { opacity: 1; } 100% { opacity: 0; transform: translateY(-14px) scale(1); } }
+  @keyframes fall { 0% { opacity: 0; transform: translateY(-10vh) rotate(0deg); } 10% { opacity: 1; } 100% { opacity: 0; transform: translateY(85vh) rotate(420deg); } }
+  .mascot-bob { animation: bob 3.6s ease-in-out infinite; }
+  .mascot-pop { animation: pop .5s ease-in-out; }
+  .mascot-shake { animation: shake .4s ease-in-out; }
   .sparkle { position: absolute; font-size: 16px; animation: sparkle 1s ease-out; }
+  .confetti-bit { position: absolute; top: 0; animation: fall 1.6s ease-in forwards; }
+  input, textarea { font-size: 16px; }
 `;
